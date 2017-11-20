@@ -60,9 +60,11 @@ public:
 
 	Client&			getClient();
 	const Client&	getClient() const;
+
 protected:
+
 	Client			mClient;
-	
+
 	void			onClose( Client* client, websocketpp::connection_hdl handle );
 	void			onFail( Client* client, websocketpp::connection_hdl handle );
 	void			onHttp( Client* client, websocketpp::connection_hdl handle );

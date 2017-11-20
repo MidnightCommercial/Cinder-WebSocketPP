@@ -35,43 +35,78 @@
 
 #pragma once
 
-#include "WebSocketConnection.h"
+#include <mutex>
+#include <set>
 
+#include "WebSocketConnection.h"
 #include "websocketpp/config/asio_no_tls.hpp"
 #include "websocketpp/server.hpp"
 
-class WebSocketServer : public WebSocketConnection
+class WebSocketServer
 {
 public:
-	typedef websocketpp::server<websocketpp::config::asio>	Server;
-	typedef Server::connection_ptr							ConnectionRef;
-	typedef Server::message_ptr								MessageRef;
+
+	using ConnectionHandle = websocketpp::connection_hdl;
+	using ConnectionSet = std::set<websocketpp::connection_hdl,std::owner_less<websocketpp::connection_hdl>>;
+	using Server = websocketpp::server<websocketpp::config::asio>;
+	using ConnectionRef = Server::connection_ptr;
+	using MessageRef = Server::message_ptr;
 
 	WebSocketServer();
 	~WebSocketServer();
 	
 	void			cancel();
 	void			listen( uint16_t port = 80 );
-	void			ping( const std::string& msg = "" );
+	void			ping( ConnectionHandle client, const std::string& msg = "" );
+	void			pingAll( const std::string& msg = "");
 	void			poll();
 	void			run();
-	void			write( const std::string& msg );
-	void			write( void const * msg, size_t len );
+	void			send( ConnectionHandle client, const std::string& msg );
+	void			send( ConnectionHandle client, void const * msg, size_t len );
+	void            broadcast( const std::string& msg );
+	void			broadcast( void const * msg, size_t len );
 
 	Server&			getServer();
 	const Server&	getServer() const;
+
+	inline void		connectOpenConnectionHandler(const std::function<void(ConnectionHandle)>& handler) { mOnOpenConnection = handler; }
+	inline void		connectCloseConnectionHandler(const std::function<void(ConnectionHandle)>& handler) { mOnCloseConnection = handler; }
+	inline void		connectErrorHandler(const std::function<void(ConnectionHandle,const std::string&)>& handler) { mOnConnectionError = handler; }
+	inline void		connectHttpHandler(const std::function<void(ConnectionHandle)>& handler) { mOnHttp = handler; }
+	inline void		connectMessageHandler(const std::function<void(ConnectionHandle, const std::string&)>& handler) { mOnMessage = handler; }
+	inline void		connectPingReceivedHandler(const std::function<void(ConnectionHandle, const std::string&)>& handler) { mOnPingReceived = handler; }
+	inline void		connectPongReceivedHandler(const std::function<void(ConnectionHandle, const std::string&)>& handler) { mOnPongReceived = handler; }
+	inline void		connectWriteHandler(const std::function<void(ConnectionHandle)>& handler) { mOnWrite = handler; }
+
+	inline void		disconnectOpenConnectionHandler() { mOnOpenConnection = nullptr; }
+	inline void		disconnectCloseConnectionHandler() { mOnCloseConnection = nullptr; }
+	inline void		disconnectErrorHandler() { mOnConnectionError = nullptr; }
+	inline void		disconnectHttpHandler() { mOnHttp = nullptr; }
+	inline void		disconnectMessageHandler() { mOnMessage = nullptr; }
+	inline void		disconnectPingReceivedHandler() { mOnPingReceived = nullptr; }
+	inline void		disconnectPongReceivedHandler() { mOnPongReceived = nullptr; }
+	inline void		disconnectWriteHandler() { mOnWrite = nullptr; }
+
 protected:
-	Server			mServer;
-	
-	void			onClose( Server* server, websocketpp::connection_hdl handle );
-	void			onFail( Server* server, websocketpp::connection_hdl handle );
-	void			onHttp( Server* server, websocketpp::connection_hdl handle );
-	void			onInterrupt( Server* server, websocketpp::connection_hdl handle );
-	void			onMessage( Server* server, websocketpp::connection_hdl handle, MessageRef msg );
-	void			onOpen( Server* server, websocketpp::connection_hdl handle );
-	bool			onPing( Server* server, websocketpp::connection_hdl handle, std::string msg );
-	void			onSocketInit( Server* server, websocketpp::connection_hdl handle, asio::ip::tcp::socket& socket );
-	void			onTcpPostInit( Server* server, websocketpp::connection_hdl handle );
-	void			onTcpPreInit( Server* server, websocketpp::connection_hdl handle );
-	bool			onValidate( Server* server, websocketpp::connection_hdl handle );
+
+	void	onCloseConnection(websocketpp::connection_hdl);
+	void	onOpenConnection(websocketpp::connection_hdl);
+	void	onConnectionError(websocketpp::connection_hdl);
+	void	onHttp(websocketpp::connection_hdl);
+	void	onMessage(websocketpp::connection_hdl, MessageRef);
+	bool	onPingReceived(websocketpp::connection_hdl, std::string);
+	void	onPongReceived(websocketpp::connection_hdl, std::string);
+
+	Server														mServer;
+	ConnectionSet												mConnections;
+
+	std::function<void(ConnectionHandle)>						mOnOpenConnection;
+	std::function<void(ConnectionHandle)>						mOnCloseConnection;
+	std::function<void(ConnectionHandle, const std::string&)>	mOnConnectionError;
+	std::function<void(ConnectionHandle)>						mOnHttp;
+	std::function<void(ConnectionHandle, const std::string&)>	mOnMessage;
+	std::function<void(ConnectionHandle, const std::string&)>	mOnPingReceived;
+	std::function<void(ConnectionHandle, const std::string&)>	mOnPongReceived;
+	std::function<void(ConnectionHandle)>						mOnWrite;
+
 };
