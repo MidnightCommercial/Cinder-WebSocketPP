@@ -53,6 +53,7 @@ public:
 	using MessageRef = Server::message_ptr;
 
 	WebSocketServer();
+	WebSocketServer( const std::shared_ptr<asio::io_service>& service );
 	~WebSocketServer();
 	
 	void			cancel();
@@ -65,7 +66,9 @@ public:
 	void			send( ConnectionHandle client, void const * msg, size_t len );
 	void            broadcast( const std::string& msg );
 	void			broadcast( void const * msg, size_t len );
+	void			close();
 
+	std::shared_ptr<asio::io_service> mIoService;
 	Server&			getServer();
 	const Server&	getServer() const;
 

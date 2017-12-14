@@ -61,9 +61,12 @@ public:
 	Client&			getClient();
 	const Client&	getClient() const;
 
+	const bool		isConnected() const { return mConnected; }
+
 protected:
 
 	Client			mClient;
+	bool			mConnected;
 
 	void			onClose( Client* client, websocketpp::connection_hdl handle );
 	void			onFail( Client* client, websocketpp::connection_hdl handle );

@@ -63,12 +63,26 @@ WebSocketServer::WebSocketServer()
 	mServer.set_pong_handler( bind(&WebSocketServer::onPongReceived, this, std::placeholders::_1, std::placeholders::_2) );
 }
 
+WebSocketServer::WebSocketServer(const std::shared_ptr<asio::io_service>& service)
+{
+	mServer.set_access_channels(websocketpp::log::alevel::all);
+	mServer.clear_access_channels(websocketpp::log::alevel::frame_payload);
+
+	mServer.init_asio(service.get());
+	mIoService = service;
+
+	mServer.set_fail_handler(bind(&WebSocketServer::onConnectionError, this, std::placeholders::_1));
+	mServer.set_http_handler(bind(&WebSocketServer::onHttp, this, std::placeholders::_1));
+	mServer.set_message_handler(bind(&WebSocketServer::onMessage, this, std::placeholders::_1, std::placeholders::_2));
+	mServer.set_open_handler(bind(&WebSocketServer::onOpenConnection, this, std::placeholders::_1));
+	mServer.set_close_handler(bind(&WebSocketServer::onCloseConnection, this, std::placeholders::_1));
+	mServer.set_ping_handler(bind(&WebSocketServer::onPingReceived, this, std::placeholders::_1, std::placeholders::_2));
+	mServer.set_pong_handler(bind(&WebSocketServer::onPongReceived, this, std::placeholders::_1, std::placeholders::_2));
+}
+
 WebSocketServer::~WebSocketServer()
 {
-	if ( !mServer.stopped() ) {
-		cancel();
-		mServer.stop();
-	}
+	
 }
 
 void WebSocketServer::cancel()
@@ -140,6 +154,15 @@ void WebSocketServer::broadcast(void const * msg, size_t len)
 {
 	for ( auto con : mConnections) {
 		send(con, msg, len);
+	}
+}
+
+void WebSocketServer::close()
+{
+	if (!mServer.stopped()) {
+		cancel();
+		if(!mIoService)
+			mServer.stop();
 	}
 }
 

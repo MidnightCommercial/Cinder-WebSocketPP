@@ -39,6 +39,8 @@ using namespace std;
 
 WebSocketClient::WebSocketClient()
 {
+	mConnected = false;
+
 	mClient.clear_access_channels( websocketpp::log::alevel::all );
 	mClient.clear_error_channels( websocketpp::log::elevel::all );
 	
@@ -206,6 +208,7 @@ const WebSocketClient::Client& WebSocketClient::getClient() const
 
 void WebSocketClient::onClose( Client* client, websocketpp::connection_hdl handle ) 
 {
+	mConnected = false;
 	if ( mCloseEventHandler != nullptr ) {
 		mCloseEventHandler();
 	}
@@ -245,6 +248,7 @@ void WebSocketClient::onMessage( Client* client, websocketpp::connection_hdl han
 
 void WebSocketClient::onOpen( Client* client, websocketpp::connection_hdl handle )
 {
+	mConnected = true;
 	mHandle = handle;
 	if ( mOpenEventHandler != nullptr ) {
 		mOpenEventHandler();
